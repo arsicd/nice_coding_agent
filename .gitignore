@@ -1,0 +1,12 @@
+.venv
+.env
+.claude
+nice_coding_agent.env
+poc_analytics.env
+poc_dbos.env
+.idea
+__debug__
+.nice/db_files
+documents
+.run
+.playwright-mcp

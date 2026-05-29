@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  agent_db:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agent_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: nice_agent_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - agent_pgdata:/var/lib/postgresql
+    shm_size: 1g
+
+volumes:
+  agent_pgdata:

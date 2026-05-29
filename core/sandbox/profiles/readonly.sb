@@ -1,0 +1,25 @@
+(version 1)
+(deny default)
+
+;; Allow process basics
+(allow process-fork)
+(allow process-exec)
+(allow signal (target self))
+(allow sysctl-read)
+(allow mach-lookup)
+(allow ipc-posix-shm)
+
+;; Reads
+(allow file-read*)
+(allow file-ioctl)
+(allow file-read-metadata)
+
+;; Writes: deny everything, then allow only scratch + /dev/null
+(deny file-write*)
+(allow file-write*
+  (subpath (param "SCRATCH_DIR"))
+  (literal "/dev/null")
+  (literal "/dev/dtracehelper"))
+
+;; No network
+(deny network*)

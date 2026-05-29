@@ -1,0 +1,54 @@
+# Agent Context Ignore File
+# Uses standard .gitignore syntax.
+# Add files/folders here that the LLM should not read or traverse.
+
+# Version Control & IDEs
+.git/
+.idea/
+.vscode/
+.run/
+.playwright-mcp/
+docs/
+
+# Agent & Custom Tools
+.claude/
+.nice/
+
+# OS Generated
+.DS_Store
+
+# Config, Environment & Lock files
+.env
+.gitignore
+uv.lock
+
+# Data & Documents
+.nice/db_files/
+documents/
+
+# Python
+__pycache__/
+__debug__/
+.mypy_cache/
+.pytest_cache/
+*.py[cod]
+venv/
+.venv/
+env/
+
+# Node / JS / Dependencies
+node_modules/
+vendor/
+dist/
+build/
+*.min.js
+
+# Java / C++ / Rust
+target/
+bin/
+obj/
+*.class
+*.jar
+*.exe
+*.dll
+*.so
