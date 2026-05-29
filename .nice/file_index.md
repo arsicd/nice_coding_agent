@@ -1,6 +1,6 @@
 #### `app/components/ask_llm_view.py`
 - **Role**: view
-- **Purpose**: Displays a dialog for the user to input a question and either ask the LLM or trigger research, validates the input, closes the dialog, and invokes the provided callbacks.
+- **Purpose**: Displays a dialog for asking or researching questions and triggers the provided callbacks.
 - **Depends on**: nicegui
 - **Structure**:
 class AskLlmView
@@ -11,7 +11,7 @@ class AskLlmView
 
 #### `app/components/browse_view.py`
 - **Role**: view
-- **Purpose**: Display a dialog for users to enter browsing instructions and trigger execution via the provided callback.
+- **Purpose**: Render a dialog UI that collects user instructions and triggers browsing actions.
 - **Depends on**: nicegui, app.components.icons
 - **Structure**:
 class BrowseView
@@ -21,7 +21,7 @@ class BrowseView
 
 #### `app/components/context_actions.py`
 - **Role**: view
-- **Purpose**: Render contextual action chips representing various user actions.
+- **Purpose**: Renders a set of interactive chips for context actions, delegating click handlers to configured callbacks.
 - **Depends on**: nicegui, app.components.icons
 - **Structure**:
 class ContextActions
@@ -84,7 +84,7 @@ def _escape(text: str) -> str:
 
 #### `app/components/icons.py`
 - **Role**: view
-- **Purpose**: Generate inline SVG icons for UI components, each returning markup driven by CSS variables.
+- **Purpose**: Render SVG icons for UI components using currentColor styling.
 - **Depends on**: none
 - **Structure**:
 def chevron_right(size: int = 10) -> str:
@@ -109,18 +109,22 @@ def overview(size: int = 13) -> str:
 def layers(size: int = 13) -> str:
 def check(size: int = 11) -> str:
 def bolt(size: int = 12) -> str:
+def settings(size: int = 13) -> str:
 def branch(size: int = 12) -> str:
 def send(size: int = 13) -> str:
 def copy(size: int = 12) -> str:
 def trash(size: int = 12) -> str:
 def diagonal(size: int = 11) -> str:
+def stop(size: int = 11) -> str:
 def bug(size: int = 13) -> str:
 def eye(size: int = 13) -> str:
+def web(size: int = 13) -> str:
+def skill(size: int = 13) -> str:
 def file_ext_class(name: str) -> str:
 
 #### `app/components/implementation_view.py`
 - **Role**: view
-- **Purpose**: Renders a UI dialog to display implementation changes and handle user apply actions.
+- **Purpose**: Renders and manages a dialog for visualizing implementation changes and handling user apply actions.
 - **Depends on**: nicegui, app.events, core.schemas
 - **Structure**:
 class ImplementationView
@@ -135,8 +139,8 @@ class ImplementationView
 
 #### `app/components/prompt_dock.py`
 - **Role**: view
-- **Purpose**: Renders the prompt dock UI and coordinates user interactions with the application state.
-- **Depends on**: nicegui, app.state, app.events, app.components.icons
+- **Purpose**: Manages the prompt dock UI, handling user input and dispatching callbacks.
+- **Depends on**: nicegui, app.components.icons, app.events, app.state
 - **Structure**:
 class PromptDockView
   def __post_init__(self) -> None:
@@ -150,6 +154,16 @@ class PromptDockView
   def on_context_size_changed(self, _payload=None) -> None:
   def on_cost_changed(self, _payload) -> None:
   def on_loading_changed(self, payload: LoadingChangedPayload) -> None:
+
+#### `app/components/settings_view.py`
+- **Role**: view
+- **Purpose**: Displays a settings dialog and coordinates loading and saving of settings.
+- **Depends on**: nicegui
+- **Structure**:
+class SettingsView
+  def __post_init__(self) -> None:
+  async def open(self) -> None:
+  async def _on_save(self) -> None:
 
 #### `app/components/sidebar.py`
 - **Role**: view
@@ -188,8 +202,8 @@ def _escape(text: str) -> str:
 
 #### `app/components/stack_header.py`
 - **Role**: view
-- **Purpose**: Manages the visual stack header, updating token meter, cost display, and model mode toggle based on state changes.
-- **Depends on**: nicegui, app.state, app.events, app.components.icons, lib.helpers
+- **Purpose**: Renders the stack header UI and updates the token meter based on context and cost changes. Handles user interactions for model mode toggling and settings.
+- **Depends on**: nicegui.ui, app.state.AppState, app.events.CostChangedPayload, lib.helpers.context_size, app.components.icons
 - **Structure**:
 class StackHeaderView
   def __post_init__(self) -> None:
@@ -201,9 +215,35 @@ class StackHeaderView
   def _update_model_mode_display(self):
   def on_model_mode_sync(self, payload: str) -> None:
 
-#### `app/components/web_search_view.py`
+#### `app/components/stream_view.py`
 - **Role**: view
-- **Purpose**: Displays a search dialog and triggers the provided search callback.
+- **Purpose**: Render the streaming console UI, manage its state, and handle user interactions such as cancel, expand, and reasoning toggles.
+- **Depends on**: nicegui, app.components.icons, app.state, core.schemas, lib.helpers
+- **Structure**:
+class StreamView
+  def __init__(self, state: AppState, on_cancel: Callable[[], Awaitable[None]] | None = None):
+  def render(self) -> None:
+  def _render_head(self) -> None:
+  def _render_body(self) -> None:
+  def _build_dialog(self) -> None:
+  def on_stream_chunk(self, event: StreamEvent) -> None:
+  def _handle_chunk(self, event: StreamEvent, ts: float) -> None:
+  def on_stream_start(self, event: StreamEvent):
+  def on_stream_end(self, _: StreamEvent):
+  def _toggle_collapsed(self) -> None:
+  def _toggle_reasoning(self) -> None:
+  async def _on_cancel(self) -> None:
+  def _open_dialog(self) -> None:
+  def _set_dialog_open(self, value: bool) -> None:
+  def _set_status(self, state: str) -> None:
+  def _reset_tok_cache(self) -> None:
+  def _count_tokens(self, s: str, which: str) -> int:
+  def _flush_if_dirty(self) -> None:
+  def _update_meta(self, r_tok: int, t_tok: int) -> None:
+  def _tail_text(text: str, reasoning: str) -> str:
+
+#### `app/components/web_search_view.py`
+- **Role**: view- **Purpose**: Render a search dialog and invoke a callback when a query is submitted.
 - **Depends on**: nicegui
 - **Structure**:
 class WebSearchView
@@ -224,12 +264,12 @@ class ContextEntry
 
 #### `app/static/styles.css`
 - **Role**: view
-- **Purpose**: Defines the dark IDE theme’s visual design tokens, layout, and component styling.
+- **Purpose**: Provides dark IDE theme styling for the application UI.
 - **Depends on**: none
 
 #### `app/controller.py`
 - **Role**: glue
-- **Purpose**: Coordinates application workflow by delegating tasks to router components and managing state and context.
+- **Purpose**: Coordinates high‑level agent workflows by delegating to the router and managing application state.
 - **Depends on**: lib.logger, core.schemas, lib.tree_parser, app.router, app.state, app.exceptions
 - **Structure**:
 class AppController
@@ -259,10 +299,14 @@ class AppController
   async def reload_context_files(self) -> None:
   async def reset_cost(self):
   async def sync_model_mode(self):
+  async def cancel_llm_execution(self) -> None:
+  async def config_validation_errors(self) -> str | None:
+  async def get_settings_text(self) -> str:
+  async def save_settings_text(self, content: str) -> None:
 
 #### `app/events.py`
-- **Role**: glue
-- **Purpose**: Define event payloads and an event bus for broadcasting domain events across the application.
+- **Role**: infrastructure
+- **Purpose**: Manages event emission and subscription across the application, defining payload types and an async-capable event bus.
 - **Depends on**: core.schemas, lib.logger
 - **Structure**:
 class LoadingChangedPayload
@@ -296,21 +340,28 @@ class EmptyContextError
 
 #### `app/main.py`
 - **Role**: entry point
-- **Purpose**: Defines FastAPI endpoints for MCP SSE and message handling, bootstraps the NiceGUI UI with theme, views, and state, registers event listeners, and launches the application.
-- **Depends on**: nicegui, fastapi, core.mcp_server, core.config, app.controller, app.events, app.presenter, app.router, app.state, app.theme, app.components.sidebar, app.components.stack_header, app.components.context_stack, app.components.context_actions, app.components.prompt_dock, app.components.implementation_view, app.components.web_search_view, app.components.ask_llm_view, app.components.browse_view, app.components.documents_view, app.components.skills_view, lib.logger, search.db.database
+- **Purpose**: Runs the application, configures routes, initializes state, and launches the UI server.
+- **Depends on**: nicegui, fastapi, pydantic.error_wrappers, core.config.settings, core.mcp_server.mcp_server, core.mcp_server.sse_transport, core.container.get_container, app.controller.AppController, app.events.Events, app.presenter.AppPresenter, app.router.Router, app.state.AppState, app.theme.apply_theme, lib.logger.get_logger, search.db.database.ensure_schema_migrated
 - **Structure**:
 async def sse_endpoint(request: Request):
 async def messages_endpoint(request: Request):
+async def acquire_slot(client: Client) -> bool:
+def show_blocked() -> None:
+async def validate_config(controller: AppController, settings_view: SettingsView ) -> None:
 async def index(client: Client) -> None:
+def main():
 
 #### `app/presenter.py`
 - **Role**: glue
-- **Purpose**: Orchestrates user interactions and coordinates controller commands, managing context state and UI notifications across the application.
+- **Purpose**: Coordinates UI interactions and delegates business logic to the controller.
 - **Depends on**: nicegui, core.schemas, app.controller, app.events, app.exceptions, app.state, lib.logger
 - **Structure**:
 class AppPresenter
   async def on_model_mode_change(self, mode: str) -> None:
+  async def on_cancel_llm(self) -> None:
   async def get_skills(self) -> list[str]:
+  async def get_settings_text(self) -> str:
+  async def on_save_settings(self, content: str) -> None:
   async def on_add_skill(self, filename: str) -> None:
   async def on_implement(self) -> None:
   async def on_plan(self) -> None:
@@ -333,7 +384,6 @@ class AppPresenter
   async def on_documents_search(self, query: str) -> list[SearchResult]:
   def on_add_document_to_context(self, result: SearchResult) -> None:
   async def on_add_additional_context(self) -> None:
-  async def on_add_issue(self) -> None:
   async def on_build_context(self) -> None:
   async def on_create_overview(self) -> None:
   async def on_create_epic(self) -> None:
@@ -348,7 +398,7 @@ class AppPresenter
 
 #### `app/router.py`
 - **Role**: glue
-- **Purpose**: Delegates router operations to core router functions, coordinating the agent container and external services.
+- **Purpose**: Coordinates routing of LLM‑driven actions by delegating to core router functions.
 - **Depends on**: core.router, core.container, core.schemas
 - **Structure**:
 class IRouter
@@ -376,6 +426,10 @@ class IRouter
   async def get_total_cost(self) -> float:
   async def reset_cost(self) -> float:
   async def get_model_mode(self) -> str:
+  async def cancel_llm_execution(self):
+  async def config_validation_errors(self) -> str | None:
+  async def get_settings_text(self) -> str:
+  async def save_settings_text(self, content: str) -> None:
 class Router
   def __init__(self, container: AgentContainer | None = None) -> None:
   async def build_context(self, instructions: str) -> list[ContextItem]:
@@ -402,11 +456,15 @@ class Router
   async def get_total_cost(self) -> float:
   async def reset_cost(self) -> float:
   async def get_model_mode(self) -> str:
+  async def cancel_llm_execution(self):
+  async def config_validation_errors(self) -> str | None:
+  async def get_settings_text(self) -> str:
+  async def save_settings_text(self, content: str) -> None:
 
 #### `app/state.py`
 - **Role**: domain logic
-- **Purpose**: Manages application state and context, emitting events for state changes.
-- **Depends on**: EventBus, Events, ContextChangedPayload, LoadingChangedPayload, TreeLoadedPayload, CostChangedPayload, ContextEntry, StateInfo, CodeChangeResponse, context_size, tiktoken
+- **Purpose**: Manages application-wide state and emits domain events to coordinate UI and model interactions.
+- **Depends on**: EventBus, Events, ContextEntry, StateInfo, CodeChangeResponse, StreamEvent, StreamKind, tiktoken, core.schemas, lib.helpers, ContextChangedPayload, LoadingChangedPayload, TreeLoadedPayload, CostChangedPayload
 - **Structure**:
 class AppState
   def __post_init__(self) -> None:
@@ -428,6 +486,8 @@ class AppState
   def remove_context_entry(self, entry_id: str) -> None:
   def clear_context(self) -> None:
   def context_size(self) -> int:
+  def on_stream_event(self, event: StreamEvent) -> None:
+  def clear_stream(self) -> None:
 
 #### `app/theme.py`
 - **Role**: glue
@@ -676,6 +736,13 @@ class ExaSearch
   def __post_init__(self):
   async def web_search(self, query: str, num_results: int, max_characters: int ) -> list[str]:
 
+#### `core/web_search/noop.py`
+- **Role**: glue- **Purpose**: Provide a no-op implementation of SearchManager that logs a warning and raises NotImplementedError.
+- **Depends on**: core.web_search.base, lib.logger
+- **Structure**:
+class NoopSearch
+  async def web_search(self, query: str, num_results: int, max_characters: int ) -> list[str]:
+
 #### `core/workflows/ask_llm.py`
 - **Role**: domain logic
 - **Purpose**: Resolves the agent container, constructs system and user messages, invokes the balanced LLM, extracts the response, and validates it before returning.
@@ -693,9 +760,9 @@ def build_graph(container: AgentContainer, playwright_tools: list[BaseTool], num
 async def main(instruction: str, headless: bool = False, container: AgentContainer | None = None) -> str:
 
 #### `core/workflows/build_context.py`
-- **Role**: glue
-- **Purpose**: Orchestrates the context‑building workflow for the agent, defining state, constructing the execution graph, and coordinating file indexing, prompt enrichment, LLM invocation, and tool execution.
-- **Depends on**: langchain_core.messages, langgraph.graph, core.container, core.exceptions, core.agent_tools, core.config, core.schemas, core.workflows.create_file_index, search.indexer, lib.logger, lib.tree_parser, lib.treesitter_extractor
+- **Role**: domain logic
+- **Purpose**: Orchestrates the context‑building workflow, defining state, tool handling, and graph execution for context generation.
+- **Depends on**: langchain_core.messages, langgraph.graph, core.container, core.exceptions, core.agent_tools, core.config, core.schemas, core.workflows.create_file_index, core.workflows.shared, lib.logger
 - **Structure**:
 def _handle_included_files(current: set[str], delta: dict[str, bool]) -> set[str]:
 class AgentState
@@ -753,10 +820,17 @@ class ResearchState
 def build_graph(container: AgentContainer, num_rounds: int) -> StateGraph:
 async def main(question: str, container: AgentContainer | None = None) -> str:
 
+#### `core/workflows/shared.py`
+- **Role**: utility
+- **Purpose**: Index project files by parsing the directory tree, filtering by language, and invoking the indexer.
+- **Depends on**: core.container, core.config, search.indexer, lib.tree_parser, lib.treesitter_extractor, lib.logger
+- **Structure**:
+async def index_project(container: AgentContainer | None = None) -> dict:
+
 #### `core/workflows/summarize_item.py`
-- **Role**: domain logic
-- **Purpose**: Summarize content using a configured system prompt and current instructions via an LLM.
-- **Depends on**: langchain_core.messages, core.container.AgentContainer, core.container.get_container, core.exceptions.AgentInvocationError, lib.logger.get_logger, lib.helpers.extract_text_response
+- **Role**: glue
+- **Purpose**: Summarize the provided content according to given instructions using the container's LLM.
+- **Depends on**: core.container, core.exceptions, lib.logger, lib.helpers, langchain_core.messages, external LLM
 - **Structure**:
 async def main(content: str, instructions: str, container: AgentContainer | None = None ) -> str:
 
@@ -775,41 +849,52 @@ def build_tools(mcp_client: FilesystemMcpClient, search_manager: SearchManager, 
 
 #### `core/config.py`
 - **Role**: config
-- **Purpose**: Load and validate application settings from environment and .env file, exposing a singleton Settings instance.
-- **Depends on**: pydantic, pydantic_settings
+- **Purpose**: Loads and validates application settings from environment files, providing a singleton configuration object.
+- **Depends on**: pydantic.error_wrappers, pydantic_settings, lib.logger
 - **Structure**:
 class LlmModel
 class LlmModels
   def __post_init__(self):
 class Settings
-  def _require_openrouter_api_key(cls, v: str) -> str:
-  def _require_exa_api_key(cls, v: str) -> str:
-def get_env_file_path(project_path) -> Path:
+  def all_providers(self) -> list[Provider]:
+  def validation_errors(self) -> str | None:
+def _ensure_file(target: Path, example: Path) -> bool:
+def get_env_file_path(project_path: Path) -> Path:
 def init_settings():
-def __getattr__(name: str) -> Settings:
+def reload_settings() -> "Settings":
+class _SettingsProxy
+  def __getattr__(self, name):
 
 #### `core/container.py`
 - **Role**: glue
-- **Purpose**: Creates and manages the application's LLM container and related services.
-- **Depends on**: langchain_openai, langchain_core, openai, langchain_google_genai, pydantic, core.config, core.prompt_config, core.mcp_clients.filesystem.mcp_client_base, core.mcp_clients.filesystem.local_filesystem_client, core.web_search.base, core.web_search.exa, core.db, lib.logger
+- **Purpose**: Create and manage Llm instances while coordinating core components such as MCP client, web search, and prompt configuration.
+- **Depends on**: langchain_openai, langchain_core, langchain_google_genai, openai, pydantic, core.config, core.entities, core.prompt_config, core.schemas, core.mcp_clients.filesystem.mcp_client_base, core.mcp_clients.filesystem.local_filesystem_client, core.web_search.base, core.web_search.exa, core.web_search.noop, core.db, lib.logger, lib.helpers
 - **Structure**:
+class ReasoningStreamMixin
+  def _convert_chunk_to_generation_chunk(self, chunk, default_chunk_class, base_generation_info ):
+class ReasoningChatOpenAI
 class KimiChatOpenAI
   def _create_chat_result(self, response: ChatCompletion | dict, generation_info: dict | None = None ) -> ChatResult:
   def _get_request_payload(self, input_: LanguageModelInput, *, stop: list[str] | None = None, **kwargs ) -> dict:
-class CostTracker
-  def add_cost(self, amount: float) -> None:
-  def reset(self):
 class Llm
   def bind_tools(self, tools, **kwargs) -> "Llm":
   async def ainvoke(self, messages: LanguageModelInput, **kwargs) -> AIMessage:
   async def ainvoke_structured(self, schema: type[T], messages: LanguageModelInput, **kwargs ) -> T:
+  def _struct_kwargs(self, kwargs: dict) -> dict:
+  def _post_to_stream(self, kind: StreamKind, data: str = "", can_stop: bool = True):
   def _extra_body(self) -> dict:
   def is_openai(self) -> bool:
   def is_deepseek(self) -> bool:
+  def _extract_deltas(chunk) -> list[tuple[StreamKind, str]]:
 class AgentContainer
   def __post_init__(self) -> None:
+  def set_web_search(self) -> None:
   def set_model_mode(self, mode: Literal["standard", "high"]) -> None:
+  def set_stream_listener(self, stream_listener: Callable[[StreamEvent], None]):
+  def invalidate_llm_cache(self):
   def create_llm(self, provider: str, model: str, temperature: float, reasoning: bool, **kwargs ) -> Llm:
+  async def get_ignore_list(self) -> list[str]:
+  def do_cancel(self) -> bool:
   def summarization_model(self) -> tuple[str, str]:
   def strict_model(self) -> tuple[str, str]:
   def creative_model(self) -> tuple[str, str]:
@@ -818,7 +903,6 @@ class AgentContainer
   def llm_coding(self) -> Llm:
   def llm_balanced(self) -> Llm:
   def llm_creative(self) -> Llm:
-  async def get_ignore_list(self) -> list[str]:
 def get_container() -> AgentContainer:
 def override_container(container: AgentContainer) -> None:
 def reset_container() -> None:
@@ -837,6 +921,15 @@ class OverviewCache
   def _set_cached_overview(self, file_path: str, file_hash: str, summary: str):
   def is_empty(self) -> bool:
 
+#### `core/entities.py`
+- **Role**: domain logic
+- **Purpose**: Track cumulative costs and provide methods to add costs and reset the total
+- **Depends on**: none
+- **Structure**:
+class CostTracker
+  def add_cost(self, amount: float) -> None:
+  def reset(self):
+
 #### `core/exceptions.py`
 - **Role**: types/schema
 - **Purpose**: Define custom exception hierarchy for the MCP agent.
@@ -850,8 +943,8 @@ class AgentInvocationError
 
 #### `core/mcp_server.py`
 - **Role**: entry point
-- **Purpose**: Registers MCP tools and handles tool calls, coordinating state, configuration, and external search workflows.
-- **Depends on**: mcp.server, mcp.server.sse, mcp.types, core.config, core.container, core.workflows.build_context, core.schemas, lib.logger, search.document_search, search.search
+- **Purpose**: Registers MCP server, defines available tools, and manages runtime state.
+- **Depends on**: mcp.server, mcp.server.sse, mcp.types, lib.logger, search.document_search, search.search, core.config, core.container, core.workflows.build_context, core.workflows.shared, core.schemas
 - **Structure**:
 def register_state(state_info: Callable[[], StateInfo]):
 async def list_tools():
@@ -868,9 +961,8 @@ class PromptConfig
   def __init__(self, epic_plan_system_prompt: str | None = None, epic_plan_review_prompt: str | None = None, planning_system_prompt: str | None = None, planning_review_prompt: str | None = None, implementation_investigate_prompt: str | None = None, implementation_draft_prompt: str | None = None, implementation_review_prompt: str | None = None, file_overview_prompt: str | None = None, merge_overview_prompt: str | None = None, summarization_system_prompt: str | None = None, index_search_prompt: str | None = None, build_context_prompt: str | None = None, ask_llm_system_prompt: str | None = None, research_system_prompt: str | None = None, browse_system_prompt: str | None = None, user_prefix: str = "[Coding Agent — user request]") -> None:
 
 #### `core/router.py`
-- **Role**: glue
-- **Purpose**: Provides async wrappers that delegate to core workflow implementations for context building, planning, implementation, summarization, browsing, web search, and file operations.
-- **Depends on**: core.workflows.build_context, core.workflows.plan_task, core.workflows.implement_task, core.workflows.create_overview, core.workflows.create_epic, core.workflows.summarize_item, core.workflows.ask_llm, core.workflows.research, core.workflows.browse, core.container, core.schemas, core.agent_tools, core.config, search.document_indexer, search.document_search, asyncio
+- **Role**: glue- **Purpose**: Provides async wrapper functions that expose core workflows and container utilities to the application.
+- **Depends on**: core.workflows.build_context, core.workflows.plan_task, core.workflows.implement_task, core.workflows.create_overview, core.workflows.create_epic, core.workflows.summarize_item, core.workflows.ask_llm, core.workflows.research, core.workflows.browse, core.container, core.schemas, core.agent_tools, core.config, search.document_indexer, search.document_search, search.db.database
 - **Structure**:
 async def build_context(instructions: str, container: AgentContainer | None = None ) -> list[ContextItem]:
 async def plan_task(prompt: str, container: AgentContainer | None = None ) -> PlanResponse:
@@ -896,11 +988,15 @@ async def get_skill_content(filename: str):
 async def get_total_cost(container: AgentContainer | None = None) -> float:
 async def reset_cost(container: AgentContainer | None = None) -> float:
 async def get_model_mode(container: AgentContainer | None = None) -> str:
+async def cancel_llm_execution(container: AgentContainer | None = None):
+async def config_validation_errors(_: AgentContainer | None = None) -> str | None:
+async def get_settings_text(container: AgentContainer | None = None) -> str:
+async def save_settings_text(content: str, container: AgentContainer | None = None ) -> None:
 
 #### `core/schemas.py`
 - **Role**: types/schema
-- **Purpose**: Defines Pydantic models that represent plan responses, content types, context items, code changes, and search results.
-- **Depends on**: pydantic, enum
+- **Purpose**: Define data models and enums for plan responses, code changes, context items, and streaming events.
+- **Depends on**: pydantic
 - **Structure**:
 class PlanResponse
 class ContentType
@@ -909,6 +1005,8 @@ class CodeChange
 class CodeChangeResponse
 class StateInfo
 class SearchResult
+class StreamKind
+class StreamEvent
 
 #### `infra/alembic.ini`
 - **Role**: config
@@ -917,12 +1015,12 @@ class SearchResult
 
 #### `infra/docker-compose.yml`
 - **Role**: infrastructure
-- **Purpose**: Defines and configures the containerized services for the agent database, including networking, volumes, and environment variables.
-- **Depends on**: Docker engine, Dockerfile
+- **Purpose**: Defines the container orchestration for the agent database service and its persistent storage.
+- **Depends on**: none
 
 #### `infra/Dockerfile`
 - **Role**: infrastructure
-- **Purpose**: Builds a container image that runs Paradedb and loads init.sql on startup
+- **Purpose**: Builds a container image that runs PostgreSQL with ParadeDB extensions and preconfigured environment variables.
 - **Depends on**: paradedb/paradedb
 
 #### `infra/init.sql`
@@ -939,12 +1037,13 @@ def parse_code_changes(text: str, tag_name: str = TAG_NAME) -> CodeChangeRespons
 
 #### `lib/helpers.py`
 - **Role**: utility
-- **Purpose**: Provide helper functions for measuring token context size, extracting text from message sequences, and retrieving file contents from tool calls.
-- **Depends on**: tiktoken, langchain_core.messages
+- **Purpose**: Compute token count, extract text and file contents from message histories, and provide an async context manager for duration logging.
+- **Depends on**: tiktoken, langchain_core.messages, lib.logger
 - **Structure**:
 def context_size(context: str) -> int:
 def extract_text_response(messages: list[BaseMessage]) -> str:
 def extract_read_files(messages: list[BaseMessage]) -> dict[str, str]:
+async def log_duration(extra: dict | None = None):
 
 #### `lib/logger.py`
 - **Role**: utility
@@ -1033,10 +1132,12 @@ def run_migrations_online() -> None:
 
 #### `search/db/database.py`
 - **Role**: infrastructure
-- **Purpose**: Configures the SQLAlchemy engine, enforces the search path, provides a session factory, and runs Alembic migrations.
-- **Depends on**: sqlalchemy, alembic.config, alembic.command, core.config.settings
+- **Purpose**: Creates and manages the database engine, session factory, and ensures schema migrations are applied.
+- **Depends on**: sqlalchemy, alembic, core.config
 - **Structure**:
-def set_search_path(dbapi_connection, connection_record):
+def get_engine():
+def get_session_local():
+def new_session():
 def get_db():
 def ensure_schema_migrated():
 
@@ -1103,8 +1204,8 @@ def split_documents(documents: Iterable[Document]) -> list[Document]:
 
 #### `search/document_indexer.py`
 - **Role**: domain logic
-- **Purpose**: Index documents from a target directory, manage chunk creation, statistics, and orphan cleanup.
-- **Depends on**: search.ml_models.get_doc_embedder, search.db.database.SessionLocal, search.db.models.DocumentChunk, search.document_processing.discovery, search.document_processing.loaders, search.document_processing.splitters, search.db.repository.DocumentChunkRepository, search.entities.DiscoveredFile, lib.logger.get_logger
+- **Purpose**: Indexes documents, splits them into chunks, generates embeddings, and updates the repository while tracking ingestion statistics.
+- **Depends on**: search.ml_models, search.db.database, search.db.models, search.document_processing.splitters, search.document_processing.loaders, search.document_processing.discovery, search.db.repository, search.entities, lib.logger
 - **Structure**:
 class DocumentIndexStats
   def get_report(self) -> str:
@@ -1116,7 +1217,7 @@ def ingest_document_directory(target_path: str) -> DocumentIndexStats:
 
 #### `search/document_search.py`
 - **Role**: domain logic
-- **Purpose**: Executes hybrid retrieval of documents using BM25 and vector similarity, then reranks results.
+- **Purpose**: Hybrid document search retrieves candidates via BM25 and vector ANN, then reranks with a cross‑encoder and returns top results.
 - **Depends on**: search.db.database, search.db.repository, search.ml_models, lib.logger
 - **Structure**:
 def hybrid_document_search(query: str, fetch_n: int = 20, top_n: int = 4) -> list[dict]:
@@ -1133,8 +1234,8 @@ class SearchResult
 
 #### `search/indexer.py`
 - **Role**: domain logic
-- **Purpose**: Indexes source files into a vector store, maintaining up‑to‑date chunk embeddings and handling orphan cleanup. Coordinates repository interactions, embeddings, and file‑level change detection.
-- **Depends on**: search.ml_models.get_code_embedder, search.db.database.SessionLocal, search.db.models.CodeChunk, search.db.repository.CodeChunkRepository, lib.logger.get_logger, lib.treesitter_extractor
+- **Purpose**: Indexes source files into a searchable database, handling chunking, embedding, and orphan management.
+- **Depends on**: search.ml_models.get_code_embedder, search.db.database.new_session, search.db.models.CodeChunk, search.db.repository.CodeChunkRepository, lib.logger.get_logger, lib.treesitter_extractor
 - **Structure**:
 class IndexStats
 def _normalize_rel(p: str) -> str:
@@ -1146,8 +1247,8 @@ def _build_chunk_models(file_path: str, chunks: list[dict], signatures: str, emb
 
 #### `search/ml_models.py`
 - **Role**: domain logic
-- **Purpose**: Defines embedding and reranking model classes and factory functions to load them based on configuration.
-- **Depends on**: mxbai_rerank, sentence_transformers, CrossEncoder, search.config, lib.logger
+- **Purpose**: Defines embedder and reranker implementations for code and document search, including model loading, embedding, and scoring logic.
+- **Depends on**: mxbai_rerank, sentence_transformers, torch, search.config, lib.logger
 - **Structure**:
 class Embedder
   def dim(self) -> int:
@@ -1176,33 +1277,39 @@ class MxbaiRerankerV2
 def get_code_embedder() -> Embedder:
 def get_doc_embedder() -> Embedder:
 def get_reranker() -> Reranker:
+def release_embedder_cache() -> None:
 def warmup_code() -> None:
 def warmup_documents() -> None:
 def warmup() -> None:
 
 #### `search/search.py`
 - **Role**: domain logic
-- **Purpose**: Implements hybrid search with BM25 and vector retrieval followed by cross‑encoder reranking to return top results.
+- **Purpose**: Implements hybrid search with two-stage retrieval, combining BM25 and vector ANN then reranking to return top results.
 - **Depends on**: search.db.database, search.db.repository, search.ml_models, lib.logger
 - **Structure**:
 def hybrid_search(query: str, fetch_n: int = 10, top_n: int = 3) -> list[dict]:
 
 #### `example.env`
 - **Role**: config
-- **Purpose**: Loads application configuration from environment variables.
-- **Depends on**: none
+- **Purpose**: Loads environment variables that configure the application's database, AI model providers, and other runtime settings.
+- **Depends on**: PostgreSQL, NVIDIA API, Google API, OpenRouter, Kimi, Mimo, Alibaba
 
 #### `example.ignore`
 - **Role**: config
-- **Purpose**: Excludes specified files and directories from processing.
+- **Purpose**: Excludes specified patterns from the agent's traversal.
+- **Depends on**: none
+
+#### `LICENSE`
+- **Role**: config
+- **Purpose**: Define the licensing terms governing distribution and modification of the software under the GNU Affero General Public License.
 - **Depends on**: none
 
 #### `pyproject.toml`
 - **Role**: config
-- **Purpose**: Defines project metadata, version, Python version requirement, and declares runtime and development dependencies.
-- **Depends on**: none
+- **Purpose**: Defines project metadata, dependencies, and build configuration.
+- **Depends on**: hatchling
 
 #### `README.MD`
-- **Role**: config
-- **Purpose**: Provide project overview, setup instructions, configuration details, and usage guidance for the coding agent.
-- **Depends on**: OpenRouter API, Exa API
+- **Role**: glue
+- **Purpose**: Provide project overview and setup instructions for the Nice Coding Agent.
+- **Depends on**: uv

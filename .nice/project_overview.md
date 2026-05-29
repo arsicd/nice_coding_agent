@@ -1,45 +1,56 @@
 # Project Architecture Overview
 
-## 1. Project Summary
+## Project Summary
 
-This is an AI-powered coding assistant that operates as both an interactive desktop application and an MCP (Model Context Protocol) server. It orchestrates LLM-driven workflows—planning, implementation, research, and code analysis—while managing a rich context system of files, documents, and conversation history. The system is built in Python using NiceGUI for the interface, LangChain/LangGraph for agent orchestration, and integrates multiple model providers through a unified abstraction layer.
+**Nice Coding Agent** is an AI-powered development assistant that helps developers understand, plan, implement, research, and document code within their projects. It provides a conversational web UI for interacting with LLM agent workflows that can read/write the local filesystem, search code and documents, run sandboxed code, and browse the web. The system is built with Python using NiceGUI for the frontend, LangChain/LangGraph for LLM orchestration, and PostgreSQL (ParadeDB) with pgvector for hybrid search.
 
-## 2. Architecture
+## Architecture
 
-The system follows a layered architecture with three primary tiers: **Presentation**, **Application Core**, and **Infrastructure**. The Presentation layer (NiceGUI-based UI) renders a dark IDE-like interface with context stacks, file trees, and prompt docks, communicating via an event bus. The Application Core contains workflow orchestration (LangGraph state machines), agent tooling, and a dependency container that manages LLM instances and service lifecycles. The Infrastructure layer provides filesystem access (local or via JetBrains MCP), sandboxed code execution, vector search backends, and persistent caching.
+The system follows a layered MVC-inspired pattern for the UI, with a workflow engine at its core. The **presentation layer** (`app/`) uses a Presenter–Controller–State triad coordinated by an async event bus. The Presenter translates user interactions into Controller calls; the Controller delegates to the **core router**, which dispatches to **LangGraph-based agent workflows** (`core/workflows/`). Each workflow (plan, implement, research, browse, build-context, etc.) is a state-machine graph that orchestrates multi-round LLM interactions with tool calls against filesystem, search, and sandbox services.
 
-Data flows from user interactions through the presenter/controller into workflow graphs that invoke tools—filesystem operations, web search, document retrieval, or LLM calls—accumulating results into a shared context stack that feeds back into the UI. The system also exposes its capabilities as an MCP server, allowing external tools (like IDEs) to invoke its workflows.
+Below the workflows sit two major subsystems: the **LLM container** (`core/container.py`) which manages model instances, provider abstraction, streaming, and cost tracking; and the **search subsystem** (`search/`) which provides hybrid code and document retrieval via BM25 + vector ANN + cross-encoder reranking, backed by PostgreSQL with pgvector. Filesystem access is abstracted behind an MCP client interface, supporting both direct local I/O and JetBrains IDE integration via the MCP protocol. A sandbox layer provides isolated code execution on macOS (and eventually Docker) for agent verification steps.
 
-## 3. Subsystem Map
+## Subsystem Map
 
 | Module | Responsibility | Anchor Entry Points |
-|--------|----------------|---------------------|
-| `app/` | Interactive UI, state management, and user event handling | `app/main.py` (bootstrap), `app/presenter.py` (interactions), `app/state.py` (context) |
-| `core/workflows/` | LangGraph-based agent workflows for planning, implementation, research, and context building | `core/workflows/build_context.py`, `core/workflows/implement_task.py`, `core/workflows/plan_task.py` |
-| `core/container.py` | Service locator and LLM factory with cost tracking and model mode switching | `core/container.py` (AgentContainer) |
-| `core/mcp_clients/` | Filesystem abstraction over local disk or JetBrains IDE via MCP | `core/mcp_clients/filesystem/` |
-| `core/agent_tools.py` | Tool registry exposing search, sandbox, and skills to agent workflows | `core/agent_tools.py` (build_tools) |
-| `core/sandbox/` | Isolated code execution environments (macOS sandbox-exec, Docker placeholder) | `core/sandbox/macos.py`, `core/sandbox/base.py` |
-| `search/` | Hybrid vector + text search over code and documents with embeddings and reranking | `search/indexer.py` (code), `search/document_indexer.py` (docs), `search/search.py` (retrieval) |
-| `search/db/` | PostgreSQL/pgvector persistence with Alembic migrations | `search/db/models.py`, `search/db/repository.py` |
-| `lib/` | Shared utilities: tree parsing, code extraction, token counting, logging | `lib/tree_parser.py`, `lib/treesitter_extractor.py`, `lib/helpers.py` |
+|--------|---------------|---------------------|
+| **App UI Components** (`app/components/`) | Render all interactive views (prompt dock, context stack, sidebar, streaming console, dialogs) | `prompt_dock.py`, `stream_view.py`, `sidebar.py` |
+| **App Presentation Logic** (`app/`) | Presenter translates UI events to controller actions; Controller orchestrates workflows; State manages context and emits events | `presenter.py`, `controller.py`, `state.py` |
+| **App Events** (`app/events.py`) | Async event bus and typed payload definitions for decoupling UI from logic | `EventBus`, `Events` enum |
+| **Core Agent Container** (`core/container.py`) | Factory and registry for LLM instances, model provider abstraction, streaming, cost tracking | `AgentContainer`, `get_container()` |
+| **Core Workflows** (`core/workflows/`) | LangGraph state-machine workflows for each agent capability | `plan_task.py`, `implement_task.py`, `research.py`, `build_context.py`, `browse.py` |
+| **Core Router** (`core/router.py`) | Thin async facade exposing all core capabilities (workflows, filesystem, search, config) | `core/router.py` module-level functions |
+| **Core Agent Tools** (`core/agent_tools.py`) | Assembles tool definitions (filesystem, search, sandbox, skills) for LLM tool-calling | `build_tools()`, `ToolName` enum |
+| **Core MCP Clients** (`core/mcp_clients/`) | Filesystem abstraction supporting local I/O and JetBrains IDE via MCP protocol | `mcp_client_base.py`, `local_filesystem_client.py`, `mcp_client_jetbrains.py` |
+| **Core Config & Prompts** (`core/config.py`, `core/prompt_config.py`) | Settings from env, prompt template loading from markdown files | `Settings`, `PromptConfig` |
+| **Search Engine** (`search/`) | Hybrid code/document indexing and retrieval with embeddings, BM25, and cross-encoder reranking | `indexer.py`, `search.py`, `document_indexer.py`, `document_search.py` |
+| **Search Storage** (`search/db/`) | PostgreSQL schema, migrations, and repository layer for code/document chunks with pgvector | `models.py`, `repository.py`, `database.py` |
+| **Sandbox** (`core/sandbox/`) | Isolated code execution (macOS sandbox-exec, Docker planned) for agent verification | `base.py`, `macos.py` |
+| **Library** (`lib/`) | Shared utilities: tree-sitter code extraction, directory tree parsing, token counting, logging | `treesitter_extractor.py`, `tree_parser.py`, `helpers.py` |
 
-## 4. Key Concepts
+## Key Concepts
 
-- **Context Stack** — Ordered collection of entries (files, summaries, conversation turns) that forms the working memory for LLM prompts
-- **Workflow** — A LangGraph state machine defining multi-step agent behavior with tool loops and human-in-the-loop decisions
-- **AgentContainer** — Dependency injection root holding configured LLM instances, filesystem clients, search managers, and cost tracker
-- **Model Mode** — Runtime toggle between standard and high-quality LLM configurations affecting cost and capability
-- **Hybrid Search** — Combined BM25 text search and vector similarity with cross-encoder reranking for code/document retrieval
-- **Sandbox** — Restricted execution environment for running generated code safely
-- **Skill** — Reusable prompt template or instruction set loaded from filesystem and injected into agent context
+- **ContextEntry** — A unit of user-assembled context (file, snippet, search result) displayed as a card and composed into the LLM prompt.
+- **AgentContainer** — Central dependency holder for LLM instances, MCP client, web search, config, and cost tracker; created once and threaded through all workflows.
+- **Workflow** — A LangGraph state machine that orchestrates a multi-round LLM conversation with tool calls to accomplish a high-level task (plan, implement, research, etc.).
+- **Hybrid Search** — Two-stage retrieval combining BM25 full-text and pgvector ANN, followed by cross-encoder reranking, used for both code chunks and document chunks.
+- **MCP Client** — Filesystem abstraction (read, write, list, replace) that supports both direct local access and remote IDE integration via the Model Control Protocol.
+- **Sandbox** — Sandboxed execution environment (macOS sandbox-exec profiles) for running agent-generated code safely during verification.
+- **Event Bus** — Async pub/sub system decoupling UI views from application state changes (loading, context, cost, stream events).
+- **PromptTemplate** — Markdown-based system prompt loaded from `core/prompts/` and customizable via `PromptConfig`.
+- **Model Mode** — Toggle between "standard" and "high" model tiers, switching the underlying LLM provider/model for cost-versus-quality control.
+- **StreamEvent** — Typed streaming token/reasoning chunks pushed from the LLM container through the event bus to the streaming console UI.
+- **CostTracker** — Per-session accumulator of LLM API costs, displayed in the UI and resettable by the user.
 
-## 5. Architectural Constraints & Integrations
+## Architectural Constraints & Integrations
 
-- **Multi-provider LLM dependency**: Requires OpenRouter, OpenAI, Google GenAI, or DeepSeek API keys; designed to switch providers at runtime via container configuration
-- **MCP protocol integration**: Exposes tools via SSE endpoints for IDE consumption and consumes filesystem operations from JetBrains MCP server
-- **Vector database duality**: Supports both Chroma (local, POC) and PostgreSQL/pgvector with ParadeDB extensions (production) for embeddings
-- **Sandbox platform limitation**: macOS sandbox-exec fully implemented; Docker sandbox is stubbed
-- **Deployment**: Packaged as Docker Compose stack with ParadeDB; UI runs as embedded NiceGUI within FastAPI
-- **Cost tracking**: All LLM invocations accumulate costs in a shared tracker surfaced to the UI
-- **Event-driven UI updates**: Presenter and views communicate through a typed event bus, not direct callbacks
+- **LLM Providers**: Pluggable via LangChain — supports OpenAI-compatible, Google Gemini, DeepSeek, Kimi, and OpenRouter endpoints; configured through environment variables.
+- **Database**: PostgreSQL with ParadeDB extensions and pgvector for hybrid search; schema managed by Alembic migrations. Also uses a local SQLite file for file-overview caching.
+- **Filesystem Access**: Abstracted behind MCP protocol — supports local filesystem (with gitignore-aware filtering) and JetBrains IDE integration over SSE.
+- **UI Framework**: NiceGUI (built on FastAPI + Vue/Quasar) for the single-page web interface; SSE transport for MCP server communication.
+- **Embedding/Reranking Models**: Local models via sentence-transformers (Jina Code, Nomic) for embeddings; mxbai-rerank / Jina for cross-encoder reranking.
+- **Web Search**: Exa API integration for external web research; pluggable via `SearchManager` interface.
+- **Code Parsing**: Tree-sitter for Python, JavaScript, TypeScript, and Go signature extraction and chunking.
+- **Sandbox Isolation**: macOS sandbox-exec with read-only profiles; Docker backend defined but not yet implemented.
+- **Deployment**: Docker Compose for PostgreSQL; application runs as a local process via `uv`/`hatch`.
+- **Key Invariants**: The event bus is the sole mechanism for UI↔logic communication; all LLM calls flow through `AgentContainer` for consistent model selection, streaming, and cost tracking; filesystem mutations are always proxied through MCP clients, never done directly.
