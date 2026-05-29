@@ -2,6 +2,7 @@ import platform
 from pathlib import Path
 
 from core.sandbox.base import Sandbox, SandboxResult
+from core.sandbox.resolvers import find_project_python
 from core.sandbox.macos import PythonMacOSSandbox, NodeMacOSSandbox
 from core.sandbox.linux import PythonLinuxSandbox, NodeLinuxSandbox
 
@@ -12,6 +13,7 @@ def make_sandbox(project_root: Path, language: str, **kwargs) -> Sandbox:
 
     if system == "Darwin":
         if language == "python":
+            kwargs.setdefault("python_executable", find_project_python(project_root))
             return PythonMacOSSandbox(project_root=project_root, **kwargs)
         elif language in ("node", "javascript"):
             return NodeMacOSSandbox(
@@ -32,6 +34,7 @@ def make_sandbox(project_root: Path, language: str, **kwargs) -> Sandbox:
 
     elif system == "Linux":
         if language == "python":
+            kwargs.setdefault("python_executable", find_project_python(project_root))
             return PythonLinuxSandbox(project_root=project_root, **kwargs)
         elif language in ("node", "javascript"):
             return NodeLinuxSandbox(

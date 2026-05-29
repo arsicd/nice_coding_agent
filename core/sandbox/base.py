@@ -158,7 +158,8 @@ class PythonMixin:
         **kwargs,
     ):
         super().__init__(project_root=project_root, **kwargs)
-        self.python_executable = Path(python_executable or sys.executable).resolve()
+        exe = Path(python_executable) if python_executable else Path(sys.executable)
+        self.python_executable = exe.absolute()
         if not self.python_executable.exists():
             raise ValueError(f"python not found: {self.python_executable}")
 
