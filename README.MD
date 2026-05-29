@@ -19,6 +19,11 @@ Nice Coding Agent runs LLM agent workflows that can read and write your local fi
 - [uv](https://docs.astral.sh/uv/) (for running the app)
 - [Docker](https://docs.docker.com/get-docker/) (for the PostgreSQL database)
 
+### Linux sandbox scratch code tool requirements
+- **bubblewrap** (`bwrap`) on `PATH`:
+  - Debian/Ubuntu: `sudo apt install bubblewrap`
+  - Fedora/RHEL:   `sudo dnf install bubblewrap`
+
 ## Getting Started
 
 ### 1. Start the database
