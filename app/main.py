@@ -206,7 +206,10 @@ def main():
     parser.add_argument("--host", default="0.0.0.0")
     args = parser.parse_args()
 
-    ui.run(title=TITLE, host=args.host, port=args.port, reload=False, dark=False)
+    try:
+        ui.run(title=TITLE, host=args.host, port=args.port, reload=False, dark=False)
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ in {"__main__", "__mp_main__"}:
