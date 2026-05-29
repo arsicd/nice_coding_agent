@@ -12,6 +12,8 @@ from lib.logger import get_logger
 
 logger = get_logger(__name__)
 
+PACKAGE_ROOT = Path(__file__).resolve().parent.parent
+
 
 @dataclass
 class LlmModel:
@@ -126,8 +128,8 @@ def get_env_file_path(project_path: Path) -> Path:
     env_file_path = nice_dir / ".env"
     ignore_file_path = nice_dir / ".ignore"
 
-    _ensure_file(ignore_file_path, Path("example.ignore"))
-    created = _ensure_file(env_file_path, Path("example.env"))
+    _ensure_file(ignore_file_path, PACKAGE_ROOT / "example.ignore")
+    created = _ensure_file(env_file_path, PACKAGE_ROOT / "example.env")
     if created:
         content = env_file_path.read_text()
         content = content.replace("DB_SCHEMA=\n", f"DB_SCHEMA={project_path.name}\n")
