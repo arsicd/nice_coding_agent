@@ -128,3 +128,12 @@ class FakeRouter(IRouter):
 
     async def cancel_llm_execution(self):
         self._record("cancel_llm_execution")
+
+    async def config_validation_errors(self) -> str | None:
+        return None
+
+    async def get_settings_text(self) -> str:
+        return ""
+
+    async def save_settings_text(self, content: str) -> None:
+        return

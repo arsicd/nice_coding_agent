@@ -28,22 +28,15 @@ def fake_env(monkeypatch):
     async def fake_list_skills_tool():
         return skills
 
+    async def fake_index_project():
+        return
+
     # Mock indexing dependencies
-    monkeypatch.setattr(module, "parse_tree_to_nodes", lambda tree, excluded=None: [])
-    monkeypatch.setattr(module, "all_tree_files", lambda nodes: [])
-
-    @dataclass
-    class Stats:
-        indexed: int = 0
-        skipped: int = 0
-        emptied: int = 0
-        failed: int = 0
-        orphans_deleted: int = 0
-
-    monkeypatch.setattr(module, "index_files", lambda paths, root, force: Stats())
+    monkeypatch.setattr(module, "index_project", fake_index_project)
 
     class MockSettings:
         project_root = "/tmp/fake_project"
+        agent_max_steps = 25
 
     monkeypatch.setattr(module, "settings", MockSettings())
 
