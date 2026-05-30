@@ -157,7 +157,7 @@ class PromptDockView
 
 #### `app/components/settings_view.py`
 - **Role**: view
-- **Purpose**: Displays a settings dialog and coordinates loading and saving of settings.
+- **Purpose**: Render a settings dialog that loads settings asynchronously and saves user input.
 - **Depends on**: nicegui
 - **Structure**:
 class SettingsView
@@ -340,8 +340,8 @@ class EmptyContextError
 
 #### `app/main.py`
 - **Role**: entry point
-- **Purpose**: Runs the application, configures routes, initializes state, and launches the UI server.
-- **Depends on**: nicegui, fastapi, pydantic.error_wrappers, core.config.settings, core.mcp_server.mcp_server, core.mcp_server.sse_transport, core.container.get_container, app.controller.AppController, app.events.Events, app.presenter.AppPresenter, app.router.Router, app.state.AppState, app.theme.apply_theme, lib.logger.get_logger, search.db.database.ensure_schema_migrated
+- **Purpose**: Defines the FastAPI entry point that initializes the NiceGUI UI, registers SSE and message endpoints, and bootstraps the application lifecycle including slot management and configuration validation.
+- **Depends on**: nicegui, fastapi, pydantic, core.config, core.mcp_server, core.container, app.controller, app.events, app.presenter, app.router, app.state, app.theme, app.components.sidebar, app.components.stack_header, app.components.context_stack, app.components.prompt_dock, app.components.implementation_view, app.components.web_search_view, app.components.ask_llm_view, app.components.browse_view, app.components.documents_view, app.components.settings_view, app.components.skills_view, app.components.stream_view, lib.logger, search.db.database
 - **Structure**:
 async def sse_endpoint(request: Request):
 async def messages_endpoint(request: Request):
@@ -353,7 +353,7 @@ def main():
 
 #### `app/presenter.py`
 - **Role**: glue
-- **Purpose**: Coordinates UI interactions and delegates business logic to the controller.
+- **Purpose**: Coordinates UI interactions and delegates tasks to the application controller while managing context state.
 - **Depends on**: nicegui, core.schemas, app.controller, app.events, app.exceptions, app.state, lib.logger
 - **Structure**:
 class AppPresenter
@@ -672,14 +672,14 @@ get_file_text(path: "core/prompts/planning_system_prompt.md")
 
 #### `core/sandbox/__init__.py`
 - **Role**: glue
-- **Purpose**: Creates and returns an appropriate sandbox instance for the given project and language by selecting a backend based on the host OS.
-- **Depends on**: core.sandbox.base, core.sandbox.macos
+- **Purpose**: Create appropriate sandbox instances by selecting backend implementations based on the host OS and specified language.
+- **Depends on**: core.sandbox.base, core.sandbox.resolvers, core.sandbox.macos, core.sandbox.linux
 - **Structure**:
 def make_sandbox(project_root: Path, language: str, **kwargs) -> Sandbox:
 
 #### `core/sandbox/base.py`
-- **Role**: domain logic
-- **Purpose**: Defines a dataclass for sandbox execution results and an abstract interface for sandbox runners.
+- **Role**: infrastructure
+- **Purpose**: Provides core sandbox abstractions and mixins for safely executing code snippets via subprocesses.
 - **Depends on**: none
 - **Structure**:
 class SandboxResult
@@ -687,6 +687,23 @@ class SandboxResult
   def format_for_llm(self) -> str:
 class Sandbox
   def run(self, code: str, timeout: float = 10.0) -> SandboxResult:
+class SubprocessSandbox
+  def __init__(self, project_root: Path, max_output_bytes: int = 10_000):
+  def file_extension(self) -> str:
+  def _get_executable_args(self) -> List[str]:
+  def _get_env(self, scratch_dir: Path) -> Dict[str, str]:
+  def _wrap_command(self, argv: List[str], scratch_dir: Path) -> List[str]:
+  def run(self, code: str, timeout: float = 10.0) -> SandboxResult:
+  def _truncate(self, text: str) -> str:
+class PythonMixin
+  def __init__(self, project_root: Path, python_executable: Path | None = None, **kwargs):
+  def _get_executable_args(self) -> List[str]:
+  def _get_env(self, scratch_dir: Path) -> Dict[str, str]:
+class NodeMixin
+  def __init__(self, project_root: Path, executable: str | Path = "node", is_typescript: bool = True, **kwargs):
+  def file_extension(self) -> str:
+  def _get_executable_args(self) -> List[str]:
+  def _get_env(self, scratch_dir: Path) -> Dict[str, str]:
 
 #### `core/sandbox/docker.py`
 - **Role**: infrastructure
@@ -697,27 +714,34 @@ class DockerSandbox
   def __init__(self, project_root: Path, image: str):
   def run(self, code: str, timeout: float = 10.0) -> SandboxResult:
 
+#### `core/sandbox/linux.py`
+- **Role**: infrastructure
+- **Purpose**: Provides bubblewrap-based sandbox implementation for Python and Node.js execution.
+- **Depends on**: core.sandbox.base,bwrap
+- **Structure**:
+class BubblewrapSandbox
+  def __init__(self, project_root: Path, bwrap_path: str | Path | None = None, **kwargs):
+  def _check_userns(self) -> None:
+  def _wrap_command(self, argv: List[str], scratch_dir: Path) -> List[str]:
+class PythonLinuxSandbox
+class NodeLinuxSandbox
+
 #### `core/sandbox/macos.py`
-- **Role**: domain logic
-- **Purpose**: Defines macOS sandbox execution for Python and TypeScript snippets, handling environment setup, command construction, and result truncation.
-- **Depends on**: core.sandbox.base, sandbox-exec
+- **Role**: domain logic- **Purpose**: Implements macOS `sandbox-exec` integration for executing Python and Node.js snippets via seatbelt profiles, defining `BaseMacOSSandbox` and its `PythonMacOSSandbox` and `NodeMacOSSandbox` subclasses.
+- **Depends on**: core.sandbox.base
 - **Structure**:
 class BaseMacOSSandbox
-  def __init__(self, project_root: Path, profile_path: Path | None = None, max_output_bytes: int = 10_000):
-  def file_extension(self) -> str:
-  def _get_executable_args(self) -> List[str]:
-  def _get_env(self, scratch_dir: Path) -> Dict[str, str]:
-  def run(self, code: str, timeout: float = 10.0) -> SandboxResult:
-  def _truncate(self, text: str) -> str:
+  def __init__(self, project_root: Path, profile_path: Path | None = None, **kwargs):
+  def _wrap_command(self, argv: List[str], scratch_dir: Path) -> List[str]:
 class PythonMacOSSandbox
-  def __init__(self, project_root: Path, python_executable: Path | None = None, **kwargs ):
-  def _get_executable_args(self) -> List[str]:
-  def _get_env(self, scratch_dir: Path) -> Dict[str, str]:
 class NodeMacOSSandbox
-  def __init__(self, project_root: Path, executable: str | Path = "node", is_typescript: bool = True, **kwargs):
-  def file_extension(self) -> str:
-  def _get_executable_args(self) -> List[str]:
-  def _get_env(self, scratch_dir: Path) -> Dict[str, str]:
+
+#### `core/sandbox/resolvers.py`
+- **Role**: domain logic
+- **Purpose**: Locate the project's Python interpreter by checking virtual environments and invoking uv.
+- **Depends on**: uv
+- **Structure**:
+def find_project_python(project_root: Path) -> Path | None:
 
 #### `core/web_search/base.py`
 - **Role**: domain logic
@@ -1310,6 +1334,6 @@ def hybrid_search(query: str, fetch_n: int = 10, top_n: int = 3) -> list[dict]:
 - **Depends on**: hatchling
 
 #### `README.MD`
-- **Role**: glue
-- **Purpose**: Provide project overview and setup instructions for the Nice Coding Agent.
-- **Depends on**: uv
+- **Role**: view
+- **Purpose**: Provides an overview of the project, its features, and setup instructions.
+- **Depends on**: none

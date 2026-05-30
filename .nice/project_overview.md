@@ -1,56 +1,50 @@
 # Project Architecture Overview
 
-## Project Summary
+## 1. Project Summary
 
-**Nice Coding Agent** is an AI-powered development assistant that helps developers understand, plan, implement, research, and document code within their projects. It provides a conversational web UI for interacting with LLM agent workflows that can read/write the local filesystem, search code and documents, run sandboxed code, and browse the web. The system is built with Python using NiceGUI for the frontend, LangChain/LangGraph for LLM orchestration, and PostgreSQL (ParadeDB) with pgvector for hybrid search.
+An AI-powered coding assistant that helps developers plan, implement, and review code changes through an interactive web UI. The system combines LLM-driven workflows with codebase understanding—indexing source files, managing context windows, and orchestrating multi-step agent operations. Built with Python, FastAPI, NiceGUI, and LangGraph, it supports multiple model providers and can operate against local filesystems or JetBrains IDEs via MCP.
 
-## Architecture
+## 2. Architecture
 
-The system follows a layered MVC-inspired pattern for the UI, with a workflow engine at its core. The **presentation layer** (`app/`) uses a Presenter–Controller–State triad coordinated by an async event bus. The Presenter translates user interactions into Controller calls; the Controller delegates to the **core router**, which dispatches to **LangGraph-based agent workflows** (`core/workflows/`). Each workflow (plan, implement, research, browse, build-context, etc.) is a state-machine graph that orchestrates multi-round LLM interactions with tool calls against filesystem, search, and sandbox services.
+The system follows a layered architecture with clear separation between presentation, application, domain, and infrastructure concerns. The **presentation layer** (`app/`) renders a NiceGUI-based IDE interface and translates user interactions into application commands. The **application layer** (`app/controller.py`, `app/presenter.py`) coordinates UI state, event propagation, and delegates to domain workflows. The **domain layer** (`core/workflows/`, `core/agent_tools.py`) implements LLM-driven workflows as stateful graphs that plan, research, implement, and summarize code changes. The **infrastructure layer** (`core/mcp_clients/`, `core/sandbox/`, `search/`, `core/db.py`) provides filesystem abstraction, code execution sandboxes, vector search, and caching.
 
-Below the workflows sit two major subsystems: the **LLM container** (`core/container.py`) which manages model instances, provider abstraction, streaming, and cost tracking; and the **search subsystem** (`search/`) which provides hybrid code and document retrieval via BM25 + vector ANN + cross-encoder reranking, backed by PostgreSQL with pgvector. Filesystem access is abstracted behind an MCP client interface, supporting both direct local I/O and JetBrains IDE integration via the MCP protocol. A sandbox layer provides isolated code execution on macOS (and eventually Docker) for agent verification steps.
+Data flows from user input through the UI → presenter → controller → workflow engine, which may invoke tools (filesystem, search, sandbox, web search), stream partial results back via events, and ultimately produce structured outputs (plans, code changes, summaries) that update the UI state.
 
-## Subsystem Map
+## 3. Subsystem Map
 
 | Module | Responsibility | Anchor Entry Points |
 |--------|---------------|---------------------|
-| **App UI Components** (`app/components/`) | Render all interactive views (prompt dock, context stack, sidebar, streaming console, dialogs) | `prompt_dock.py`, `stream_view.py`, `sidebar.py` |
-| **App Presentation Logic** (`app/`) | Presenter translates UI events to controller actions; Controller orchestrates workflows; State manages context and emits events | `presenter.py`, `controller.py`, `state.py` |
-| **App Events** (`app/events.py`) | Async event bus and typed payload definitions for decoupling UI from logic | `EventBus`, `Events` enum |
-| **Core Agent Container** (`core/container.py`) | Factory and registry for LLM instances, model provider abstraction, streaming, cost tracking | `AgentContainer`, `get_container()` |
-| **Core Workflows** (`core/workflows/`) | LangGraph state-machine workflows for each agent capability | `plan_task.py`, `implement_task.py`, `research.py`, `build_context.py`, `browse.py` |
-| **Core Router** (`core/router.py`) | Thin async facade exposing all core capabilities (workflows, filesystem, search, config) | `core/router.py` module-level functions |
-| **Core Agent Tools** (`core/agent_tools.py`) | Assembles tool definitions (filesystem, search, sandbox, skills) for LLM tool-calling | `build_tools()`, `ToolName` enum |
-| **Core MCP Clients** (`core/mcp_clients/`) | Filesystem abstraction supporting local I/O and JetBrains IDE via MCP protocol | `mcp_client_base.py`, `local_filesystem_client.py`, `mcp_client_jetbrains.py` |
-| **Core Config & Prompts** (`core/config.py`, `core/prompt_config.py`) | Settings from env, prompt template loading from markdown files | `Settings`, `PromptConfig` |
-| **Search Engine** (`search/`) | Hybrid code/document indexing and retrieval with embeddings, BM25, and cross-encoder reranking | `indexer.py`, `search.py`, `document_indexer.py`, `document_search.py` |
-| **Search Storage** (`search/db/`) | PostgreSQL schema, migrations, and repository layer for code/document chunks with pgvector | `models.py`, `repository.py`, `database.py` |
-| **Sandbox** (`core/sandbox/`) | Isolated code execution (macOS sandbox-exec, Docker planned) for agent verification | `base.py`, `macos.py` |
-| **Library** (`lib/`) | Shared utilities: tree-sitter code extraction, directory tree parsing, token counting, logging | `treesitter_extractor.py`, `tree_parser.py`, `helpers.py` |
+| **UI Components** (`app/components/`) | Renders dialogs, context stacks, stream views, and sidebar navigation for the IDE interface | `app/components/prompt_dock.py`, `app/components/context_stack.py`, `app/components/stream_view.py` |
+| **Application Shell** (`app/`) | Manages global state, event bus, and coordinates between UI and domain workflows | `app/state.py`, `app/events.py`, `app/presenter.py`, `app/controller.py` |
+| **Workflow Engine** (`core/workflows/`) | Orchestrates multi-step LLM workflows: planning, implementation, research, context building, and overview generation | `core/workflows/plan_task.py`, `core/workflows/implement_task.py`, `core/workflows/build_context.py`, `core/workflows/research.py` |
+| **Agent Tools** (`core/agent_tools.py`) | Exposes filesystem, search, sandbox, and skill tools to workflows as LangChain-compatible tool interfaces | `core/agent_tools.py` |
+| **LLM Infrastructure** (`core/container.py`, `core/config.py`) | Configures and creates LLM instances with provider-specific streaming, reasoning, and structured output support | `core/container.py`, `core/config.py` |
+| **Filesystem Abstraction** (`core/mcp_clients/`) | Provides read/write/list operations against local filesystem or remote JetBrains IDE via MCP protocol | `core/mcp_clients/filesystem/local_filesystem_client.py`, `core/mcp_clients/filesystem/mcp_client_jetbrains.py` |
+| **Code Execution Sandbox** (`core/sandbox/`) | Safely executes Python/Node.js code snippets with OS-specific isolation (macOS seatbelt, Linux bubblewrap) | `core/sandbox/base.py`, `core/sandbox/macos.py`, `core/sandbox/linux.py` |
+| **Codebase Search** (`search/`) | Indexes source code and documents into vector stores with hybrid search (BM25 + embeddings + reranking) | `search/indexer.py`, `search/search.py`, `search/document_indexer.py`, `search/document_search.py` |
+| **Search Storage** (`search/db/`, `search/chroma_poc/`) | Persists chunks and embeddings in PostgreSQL/pgvector or Chroma, with Alembic migrations | `search/db/models.py`, `search/db/repository.py`, `search/chroma_poc/storage/vector_store.py` |
+| **Document Processing** (`search/document_processing/`) | Discovers, loads, and chunks documents for ingestion into search indexes | `search/document_processing/discovery.py`, `search/document_processing/loaders.py`, `search/document_processing/splitters.py` |
+| **ML Models** (`search/ml_models.py`) | Manages embedding and reranking model lifecycle for code and document retrieval | `search/ml_models.py` |
+| **Utilities** (`lib/`) | Shared parsing, token counting, tree parsing, Tree-sitter extraction, and logging | `lib/treesitter_extractor.py`, `lib/tree_parser.py`, `lib/helpers.py`, `lib/code_parser.py` |
 
-## Key Concepts
+## 4. Key Concepts
 
-- **ContextEntry** — A unit of user-assembled context (file, snippet, search result) displayed as a card and composed into the LLM prompt.
-- **AgentContainer** — Central dependency holder for LLM instances, MCP client, web search, config, and cost tracker; created once and threaded through all workflows.
-- **Workflow** — A LangGraph state machine that orchestrates a multi-round LLM conversation with tool calls to accomplish a high-level task (plan, implement, research, etc.).
-- **Hybrid Search** — Two-stage retrieval combining BM25 full-text and pgvector ANN, followed by cross-encoder reranking, used for both code chunks and document chunks.
-- **MCP Client** — Filesystem abstraction (read, write, list, replace) that supports both direct local access and remote IDE integration via the Model Control Protocol.
-- **Sandbox** — Sandboxed execution environment (macOS sandbox-exec profiles) for running agent-generated code safely during verification.
-- **Event Bus** — Async pub/sub system decoupling UI views from application state changes (loading, context, cost, stream events).
-- **PromptTemplate** — Markdown-based system prompt loaded from `core/prompts/` and customizable via `PromptConfig`.
-- **Model Mode** — Toggle between "standard" and "high" model tiers, switching the underlying LLM provider/model for cost-versus-quality control.
-- **StreamEvent** — Typed streaming token/reasoning chunks pushed from the LLM container through the event bus to the streaming console UI.
-- **CostTracker** — Per-session accumulator of LLM API costs, displayed in the UI and resettable by the user.
+- **Context Stack** — Ordered collection of user-selected files, snippets, and generated artifacts fed into LLM prompts
+- **Workflow** — Stateful, multi-turn LLM interaction graph (planning, implementation, research) with tool use loops
+- **AgentContainer** — Dependency injection container holding configured LLM instances, MCP clients, and search backends
+- **MCP Client** — Abstraction over filesystem operations, enabling local or IDE-remote file access via Model Control Protocol
+- **Hybrid Search** — Two-stage retrieval combining sparse (BM25) and dense (vector ANN) methods with cross-encoder reranking
+- **Sandbox** — Isolated code execution environment with OS-specific security profiles
+- **Stream Event** — Typed, incremental LLM output (content, reasoning, tool calls) pushed to UI via event bus
+- **Model Mode** — Quality/cost tier selection (standard vs. high) affecting which LLM provider and parameters are used
 
-## Architectural Constraints & Integrations
+## 5. Architectural Constraints & Integrations
 
-- **LLM Providers**: Pluggable via LangChain — supports OpenAI-compatible, Google Gemini, DeepSeek, Kimi, and OpenRouter endpoints; configured through environment variables.
-- **Database**: PostgreSQL with ParadeDB extensions and pgvector for hybrid search; schema managed by Alembic migrations. Also uses a local SQLite file for file-overview caching.
-- **Filesystem Access**: Abstracted behind MCP protocol — supports local filesystem (with gitignore-aware filtering) and JetBrains IDE integration over SSE.
-- **UI Framework**: NiceGUI (built on FastAPI + Vue/Quasar) for the single-page web interface; SSE transport for MCP server communication.
-- **Embedding/Reranking Models**: Local models via sentence-transformers (Jina Code, Nomic) for embeddings; mxbai-rerank / Jina for cross-encoder reranking.
-- **Web Search**: Exa API integration for external web research; pluggable via `SearchManager` interface.
-- **Code Parsing**: Tree-sitter for Python, JavaScript, TypeScript, and Go signature extraction and chunking.
-- **Sandbox Isolation**: macOS sandbox-exec with read-only profiles; Docker backend defined but not yet implemented.
-- **Deployment**: Docker Compose for PostgreSQL; application runs as a local process via `uv`/`hatch`.
-- **Key Invariants**: The event bus is the sole mechanism for UI↔logic communication; all LLM calls flow through `AgentContainer` for consistent model selection, streaming, and cost tracking; filesystem mutations are always proxied through MCP clients, never done directly.
+- **Multiple LLM Providers**: Supports OpenAI, Google GenAI, DeepSeek, Kimi, and others via LangChain adapters; configuration is provider-model-temperature-reasoning matrix
+- **MCP Protocol**: Optional JetBrains IDE integration via MCP server; falls back to direct filesystem access
+- **Vector Search Backends**: Dual support for PostgreSQL/pgvector (production) and Chroma (PoC/local), selected via configuration
+- **Embedding Models**: Jina and Nomic embedders for code/documents; Jina and MXBAI rerankers for result ranking
+- **Sandbox Security**: Platform-specific isolation required—macOS `sandbox-exec` with seatbelt profiles, Linux `bubblewrap`, Docker placeholder
+- **Web Search**: Optional Exa API integration; degrades to no-op if unconfigured
+- **Persistence**: SQLite for file overview caching; PostgreSQL for chunk/embedding storage with Alembic migrations
+- **Deployment**: FastAPI server with NiceGUI; Docker Compose for PostgreSQL/ParadeDB; single-tenant desktop or server deployment
