@@ -592,25 +592,43 @@ class AppPresenter:
                 with ui.element("div").classes("dialog-body w-full"):
                     ui.html(
                         "<div style='font-weight:600; margin-bottom:0.6rem;'>Before you start, do the following:</div>"
-                        "<ul style='list-style:none; margin:0; padding:0; line-height:1.6;'>"
-                        "<li style='display:flex; gap:0.6rem; align-items:flex-start; margin-bottom:0.4rem;'>"
-                        "<span style='opacity:0.7;'>☐</span>"
-                        "<span>Adjust <code>.nice/.env</code> to configure database and llm providers.</span>"
-                        "</li>"
-                        "<li style='display:flex; gap:0.6rem; align-items:flex-start; margin-bottom:0.4rem;'>"
-                        "<span style='opacity:0.7;'>☐</span>"
-                        "<span>Adjust <code>.nice/.ignore</code> to exclude files you don't want to index.</span>"
-                        "</li>"
-                        "<li style='display:flex; gap:0.6rem; align-items:flex-start; margin-bottom:0.4rem;'>"
-                        "<span style='opacity:0.7;'>☐</span>"
-                        "<span>Check the file tree contains only files you want indexed — use the reload button after editing <code>.nice/.ignore</code>.</span>"
-                        "</li>"
-                        "<li style='display:flex; gap:0.6rem; align-items:flex-start;'>"
-                        "<span style='opacity:0.7;'>☐</span>"
-                        "<span>Run <strong>Create Overview</strong> before any other action to index the files.</span>"
-                        "</li>"
-                        "</ul>"
                     )
+
+                    with ui.element("ul").style(
+                        "list-style:none; margin:0; padding:0; line-height:1.6;"
+                    ):
+                        with ui.element("li").style(
+                            "display:flex; gap:0.6rem; align-items:flex-start; margin-bottom:0.4rem;"
+                        ):
+                            ui.html("<span style='opacity:0.7;'>☐</span>")
+                            with ui.element("span").classes("inline"):
+                                ui.html(
+                                    "Configure LLM provider - defaults to the free NVIDIA API (40 RPM) — get a key at "
+                                ).classes("inline")
+                                ui.link(
+                                    "build.nvidia.com",
+                                    "https://build.nvidia.com",
+                                    new_tab=True,
+                                ).classes("inline").style(
+                                    "color:#3b82f6; text-decoration:underline;"
+                                )
+                                ui.html(".").classes("inline")
+
+                        with ui.element("li").style(
+                            "display:flex; gap:0.6rem; align-items:flex-start; margin-bottom:0.4rem;"
+                        ):
+                            ui.html("<span style='opacity:0.7;'>☐</span>")
+                            ui.html(
+                                "<span>Adjust <code>.nice/.ignore</code> in your IDE to exclude files from index — after editing use PROJECT FILES reload button to confirm.</span>"
+                            )
+
+                        with ui.element("li").style(
+                            "display:flex; gap:0.6rem; align-items:flex-start;"
+                        ):
+                            ui.html("<span style='opacity:0.7;'>☐</span>")
+                            ui.html(
+                                "<span>Run <strong>Create Overview</strong> before any other action to index the files.</span>"
+                            )
 
                 with ui.element("div").classes("dialog-foot"):
                     ok_btn = ui.element("button").classes("cmdbtn primary")
